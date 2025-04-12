@@ -26,8 +26,7 @@ raga.finance_luma/
 
 ## 🚀 1. For Setup
 
- **Add your credentials**  
-   Create `.env` file with these exact values:
+   ## Create `.env` file with these exact values:
    ```bash
    EMAIL="examaple@gmail.com" // change with yours luma email
 
@@ -36,7 +35,15 @@ raga.finance_luma/
    EVENT_URL="https://lu.ma/pakav9at?tk=AzhgsJ"   // just paste the event url you want to scrap
    EVENT_TYPE="upcoming"  // either upcoming or past
 
+
    ```
+
+
+
+   ### Add `credentials.json` file 
+   
+
+   
 
 ## 2. Activating the Virtual Environment
 
