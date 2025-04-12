@@ -34,7 +34,7 @@ raga.finance_luma/
    PASSWORD="luma@123dhedhe" // your actual password
 
    EVENT_URL="https://lu.ma/pakav9at?tk=AzhgsJ"   // just paste the event url you want to scrap
-   EVENT_TYPE="upcoming"  // either upcoming or past
+   EVENT_TYPE="past"  // either upcoming or past
 
 
    ```
