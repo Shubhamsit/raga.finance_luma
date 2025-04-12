@@ -9,10 +9,11 @@ PARENT_FOLDER_NAME = "Luma Events Master"
 PARENT_FOLDER_ID = None  
 
 # Social media base URLs
+
 SOCIAL_LINKS = {
     'twitter': 'https://twitter.com/',
     'instagram': 'https://instagram.com/',
-    'linkedin': 'https://linkedin.com/in/',
+    'linkedin': 'https://linkedin.com',
     'youtube': 'https://youtube.com/@',
     'tiktok': 'https://tiktok.com/@'
 }
@@ -153,6 +154,7 @@ def write_attendees(sheet, event_details):
     ]
     
     # Format the data rows with only the fields we want
+
     formatted_rows = []
     for attendee in event_details['attendees']:
   
@@ -194,6 +196,7 @@ def write_attendees(sheet, event_details):
     })
     
     # Freeze only the header row (row 5) and first column
+    
     sheet.freeze(rows=5, cols=1)
     
     # Auto-resize columns

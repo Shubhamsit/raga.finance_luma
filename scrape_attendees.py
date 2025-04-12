@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import json
 import time
+import random
 
 def scrape_attendees(driver, event_id, event_type):
     """
@@ -29,12 +30,11 @@ def scrape_attendees(driver, event_id, event_type):
 
     try:
         print("Navigating to Luma dashboard")
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(2)
 
         # Determine which tab to click based on event type
-
         if event_type.lower() == "upcoming":
             print("Clicking on Upcoming events tab")
             event_button_selector = "button:nth-child(1)"
@@ -42,13 +42,13 @@ def scrape_attendees(driver, event_id, event_type):
             print("Clicking on Past events tab.")
             event_button_selector = "button:nth-child(2)"
 
-        event_button = WebDriverWait(driver, 10).until(
+        event_button = WebDriverWait(driver, 15).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, event_button_selector)))
         event_button.click()
         time.sleep(3)
 
         print(f"Looking for event with ID: {event_id}")
-        event_card = WebDriverWait(driver, 10).until(
+        event_card = WebDriverWait(driver, 15).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, f"a.event-link[href='/{event_id}']")))
         event_card.click()
         print("Event page opened")
@@ -78,7 +78,6 @@ def scrape_attendees(driver, event_id, event_type):
             print(f"Could not extract event name: {str(e)}")
 
         # Extract event date and time
-
         try:
             # Date element
             date_selectors = [
@@ -101,7 +100,6 @@ def scrape_attendees(driver, event_id, event_type):
                 except NoSuchElementException:
                     continue
 
-           
             time_selectors = [
                 ("css", "div.time-container"), 
                 ("xpath", "//div[contains(@class, 'time-info')]") 
@@ -119,7 +117,6 @@ def scrape_attendees(driver, event_id, event_type):
                 except NoSuchElementException:
                     continue
 
-           
             location_selectors = [
                 ("css", "div.location-info"),  
                 ("xpath", "//div[contains(@class, 'venue')]")  
@@ -140,7 +137,6 @@ def scrape_attendees(driver, event_id, event_type):
         except Exception as e:
             print(f"Could not extract event details: {str(e)}")
 
-     
         print("Attempting to open attendee section.")
         attendee_selectors = [
             "button div.guests",
@@ -151,7 +147,7 @@ def scrape_attendees(driver, event_id, event_type):
         attendee_button = None
         for selector in attendee_selectors:
             try:
-                attendee_button = WebDriverWait(driver, 5).until(
+                attendee_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
                 break
             except (NoSuchElementException, TimeoutException):
@@ -164,69 +160,165 @@ def scrape_attendees(driver, event_id, event_type):
         time.sleep(2)
 
         print("Collecting attendee usernames from modal...")
-        modal_selectors = [
-            "div.lux-overlay.modal",
-            "div[role='dialog']",
-            "div.attendee-modal"
+        modal = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div.lux-overlay.modal"))
+        )
+        
+        # Find the scrollable container - trying multiple selectors
+
+        scroll_container = None
+        container_selectors = [
+            (By.CSS_SELECTOR, "body > div.lux-overlay.modal > div > div > div.jsx-531347415 > div.jsx-531347415.flex-column.outer.overflow-auto"),
+            (By.XPATH, "/html/body/div[62]/div/div/div[2]/div[2]"),
+            (By.CSS_SELECTOR, "div[class*='overflow-auto']")
         ]
         
-        modal = None
-        for selector in modal_selectors:
+        for by, selector in container_selectors:
             try:
-                modal = WebDriverWait(driver, 10).until(
-                    EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
+                scroll_container = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((by, selector)))
+                print(f"Found scroll container using {selector}")
                 break
-            except (NoSuchElementException, TimeoutException):
+            except Exception as e:
+                print(f"Could not find container with {selector}: {str(e)}")
                 continue
                 
-        if not modal:
-            raise NoSuchElementException("Could not find attendee modal with any selector")
+        if not scroll_container:
+            print("Using modal as fallback scroll container")
+            scroll_container = modal
+
+        print("Starting optimized scrolling to load all attendees...")
+        all_usernames = set()
+        last_count = 0
+        same_count_attempts = 0
+        max_attempts = 200  
+        scroll_increment = 0.1  
+        
+       
+
+        while same_count_attempts < max_attempts:
+
+            # Get all current attendee links
+
+            current_links = scroll_container.find_elements(By.CSS_SELECTOR, "a[href^='/user/']")
+            current_count = len(current_links)
             
-        time.sleep(1)
+            # Collect new usernames
 
-        # Scroll to load all attendees
+            new_usernames = 0
+            for link in current_links:
+                try:
+                    href = link.get_attribute("href")
+                    if href and "/user/" in href:
+                        username = href.split("/user/")[-1].split('?')[0].split('/')[0]
+                        if username and username not in all_usernames:
+                            all_usernames.add(username)
+                            new_usernames += 1
+                except Exception as e:
+                    print(f"Error extracting username: {str(e)}")
+                    continue
+            
+            print(f"Total attendees: {len(all_usernames)} | New this batch: {new_usernames} | Attempt: {same_count_attempts+1}/{max_attempts}")
 
-        print("Scrolling to load all attendees...")
-        last_height = driver.execute_script("return arguments[0].scrollHeight", modal)
-        while True:
-            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", modal)
-            time.sleep(1)
-            new_height = driver.execute_script("return arguments[0].scrollHeight", modal)
-            if new_height == last_height:
-                break
-            last_height = new_height
+            if(current_count<8):
+                same_count_attempts=200 
+            
+            # Randomize scroll behavior to prevent detection
 
-        # Get all profile links to extract usernames
+            container_height = driver.execute_script("return arguments[0].scrollHeight", scroll_container)
+            current_pos = driver.execute_script("return arguments[0].scrollTop", scroll_container)
+            
+            # Dynamic scroll increment (10-25% of container height)
 
-        profile_links = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "a[href^='/user/']")))
+            scroll_increment = 0.10 + (random.random() * 0.1)
+            scroll_amount = int(container_height * scroll_increment)
+            new_pos = current_pos + scroll_amount
+            
+            # Don't scroll past the bottom
 
-        # Extract unique usernames
-        usernames = list(set(
-            link.get_attribute("href").split("/user/")[-1]
-            for link in profile_links
-            if link.get_attribute("href") and "/user/" in link.get_attribute("href")
-        ))
+            if new_pos >= container_height:
+                new_pos = container_height - 100 
+                same_count_attempts += 1
+            
+            # Perform the scroll
 
-        print(f"Found {len(usernames)} unique attendees to scrape")
+            driver.execute_script(f"arguments[0].scrollTop = {new_pos}", scroll_container)
+            
+        
+            wait_time =1
+            time.sleep(wait_time)
+            
+            # Check if we're still loading new attendees
+
+            new_links = scroll_container.find_elements(By.CSS_SELECTOR, "a[href^='/user/']")
+            if len(new_links) == current_count:
+                same_count_attempts += 1
+
+                # Increase scroll increment if  stuck
+
+                scroll_increment = min(scroll_increment * 1.2, 0.5)  # Cap at 50%
+            else:
+                same_count_attempts = 0
+                scroll_increment = 0.15  
+
+                
+            # Early exit if we've scrolled to bottom and no new attendees
+          
+            if new_pos >= container_height - 100 and new_usernames == 0:
+
+                # Wait longer and check again before exiting
+
+                print("Possible bottom reached - waiting 5 seconds to confirm...")
+                time.sleep(5)  
+                
+                # Check one more time for new usernames
+
+                final_check_links = scroll_container.find_elements(By.CSS_SELECTOR, "a[href^='/user/']")
+                final_usernames = set()
+                for link in final_check_links:
+                    try:
+                        href = link.get_attribute("href")
+                        if href and "/user/" in href:
+                            username = href.split("/user/")[-1].split('?')[0].split('/')[0]
+                            if username and username not in all_usernames:
+                                final_usernames.add(username)
+                    except:
+                        continue
+                
+                if len(final_usernames) == 0:
+                    print("Confirmed no new attendees after waiting - ending scroll")
+                    break
+                else:
+                    print(f"Found {len(final_usernames)} new attendees after wait - continuing")
+                    all_usernames.update(final_usernames)
+                    same_count_attempts = 0  # Reset counter since we found new ones
+                        
+
+        usernames = list(all_usernames)
+        print(f"Total unique attendees found: {len(usernames)}")
 
         # Now visit each profile to get detailed info
-
-        for username in usernames:
+        for i, username in enumerate(usernames):
             try:
+                print(f"Processing attendee {i+1}/{len(usernames)}: {username}")
                 profile_url = f"https://lu.ma/user/{username}"
                 driver.get(profile_url)
-                time.sleep(3)
+                
+                # Random wait time between 1-3 seconds
+                time.sleep(1 + (random.random() * 2))
 
                 # Wait for the __NEXT_DATA__ script
+
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//script[@id='__NEXT_DATA__']")))
 
                 # Extract JSON data
+                
                 script_element = driver.find_element(By.XPATH, "//script[@id='__NEXT_DATA__']")
                 next_data = json.loads(script_element.get_attribute("textContent"))
 
-                # Extract user data
+
+                user_data = {}
                 try:
                     user_data = next_data['props']['pageProps']['initialData']['user']
                 except KeyError:
@@ -236,7 +328,11 @@ def scrape_attendees(driver, event_id, event_type):
                         print(f"Couldn't find user data for {username}")
                         continue
 
+                if not user_data:
+                    continue
+
                 # Process social links
+
                 social_links = {
                     'twitter': user_data.get('twitter_handle'),
                     'instagram': user_data.get('instagram_handle'),
@@ -247,56 +343,36 @@ def scrape_attendees(driver, event_id, event_type):
                 social_links = {k: v for k, v in social_links.items() if v}
 
                 # Get event stats
-                event_stats = next_data['props']['pageProps']['initialData']
+                event_stats = next_data.get('props', {}).get('pageProps', {}).get('initialData', {})
                 events_hosted = event_stats.get('event_hosted_count', 'N/A')
                 events_attended = event_stats.get('event_attended_count', 'N/A')
                 events_together = event_stats.get('event_together_count', 'N/A')
 
                 # Create profile data
-
-                profile_data = {
-                    'username': username,
-                    'name': user_data.get('name', 'N/A'),
-                    'username_display': user_data.get('username', 'N/A'),
-                    'bio': user_data.get('bio_short', 'N/A'),
-                    'location': f"{user_data.get('geo_city', '')}, {user_data.get('geo_country', '')}".strip(", "),
-                    'website': user_data.get('website', 'N/A'),
-                    'profile_image': user_data.get('avatar_url', 'N/A'),
-                    'events_hosted': events_hosted,
-                    'events_attended': events_attended,
-                    'events_together': events_together,
-                    'social_links': social_links
-                }
-
-                # Add to attendees list
                 
-                attendees.append([
-                    profile_data['username'],
-                    profile_data['name'],
-                    profile_data['username_display'],
-                    profile_data['bio'],
-                    profile_data['location'],
-                    profile_data['website'],
-                    profile_data['profile_image'],
-                    profile_data['events_hosted'],
-                    profile_data['events_attended'],
-                    profile_data['events_together'],
-                    profile_data['social_links'].get('twitter', 'N/A'),
-                    profile_data['social_links'].get('instagram', 'N/A'),
-                    profile_data['social_links'].get('linkedin', 'N/A'),
+                profile_data = [
+                    username,
+                    user_data.get('name', 'N/A'),
+                    user_data.get('username', 'N/A'),
+                    user_data.get('bio_short', 'N/A'),
+                    f"{user_data.get('geo_city', '')}, {user_data.get('geo_country', '')}".strip(", "),
+                    user_data.get('website', 'N/A'),
+                    user_data.get('avatar_url', 'N/A'),
+                    events_hosted,
+                    events_attended,
+                    events_together,
+                    social_links.get('twitter', 'N/A'),
+                    social_links.get('instagram', 'N/A'),
+                    social_links.get('linkedin', 'N/A'),
                     'N/A',  # telegram
-                    profile_data['social_links'].get('youtube', 'N/A'),
-                    profile_data['social_links'].get('tiktok', 'N/A'),
+                    social_links.get('youtube', 'N/A'),
+                    social_links.get('tiktok', 'N/A'),
                     'N/A',  # facebook
                     'N/A'   # github
-                ])
+                ]
 
-                print(f"\nScraped: {profile_data['name']} (@{profile_data['username_display']})")
-                print(f"   - Bio: {profile_data['bio']}")
-                print(f"   - Location: {profile_data['location']}")
-                print(f"   - Website: {profile_data['website']}")
-                print(f"   - Events: Hosted {profile_data['events_hosted']}, Attended {profile_data['events_attended']}")
-                print(f"   - Social Links: {profile_data['social_links'] or 'None found'}")
+                attendees.append(profile_data)
+                print(f"Scraped: {user_data.get('name', username)}")
 
             except Exception as e:
                 print(f"Failed to scrape profile for {username}: {str(e)[:100]}...")
