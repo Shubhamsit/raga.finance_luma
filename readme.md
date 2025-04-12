@@ -25,8 +25,9 @@ raga.finance_luma/
 ```
 
 ## 🚀 1. For Setup
+###  First ` Clone the repository`
 
-   ## Create `.env` file with these exact values:
+   ## -> Create `.env` file with these exact values:
    ```bash
    EMAIL="examaple@gmail.com" // change with yours luma email
 
@@ -40,7 +41,7 @@ raga.finance_luma/
 
 
 
-   ### Add `credentials.json` file 
+   ### Add `credentials.json` file  (provided / download through drive link )
    
 
    
