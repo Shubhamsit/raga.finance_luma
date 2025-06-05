@@ -10,8 +10,7 @@ load_dotenv()
 
 
 
-event_url ="https://lu.ma/alteverything?tk=HbYCNm" 
-# event_url ="https://lu.ma/bemo?tk=bEHY5D" 
+event_url ="https://lu.ma/TheBestEvent-DevCon24?tk=5FuRNg" 
 
 # event_url = os.environ.get("EVENT_URL")
 event_type = "past"
