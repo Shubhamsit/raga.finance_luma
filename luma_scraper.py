@@ -10,14 +10,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from dotenv import load_dotenv
 load_dotenv()
 
-EMAIL = os.environ.get("EMAIL")
-PASSWORD = os.environ.get("PASSWORD")
+EMAIL ="737rohit.a@gmail.com"
+# EMAIL = os.environ.get("EMAIL")
+PASSWORD ="RohitNexus1234"
+# PASSWORD = os.environ.get("PASSWORD")
 print(EMAIL)
 print(PASSWORD)
 
 def login_to_luma():
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
+    # chrome_options.add_argument("C:\\Users\\Shubham Kumar\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 2")
     chrome_options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     )
@@ -79,3 +82,7 @@ def login_to_luma():
        
 
         
+
+
+
+

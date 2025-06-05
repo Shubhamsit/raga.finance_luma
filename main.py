@@ -8,8 +8,14 @@ from urllib.parse import urlparse
 
 load_dotenv()
 
-event_url = os.environ.get("EVENT_URL")
-event_type = os.environ.get("EVENT_TYPE")
+
+
+event_url ="https://lu.ma/alteverything?tk=HbYCNm" 
+# event_url ="https://lu.ma/bemo?tk=bEHY5D" 
+
+# event_url = os.environ.get("EVENT_URL")
+event_type = "past"
+# event_type = os.environ.get("EVENT_TYPE")
 
 
 def extract_event_id(luma_url):
@@ -26,6 +32,7 @@ if __name__ == "__main__":
 
 
 
+    # obj = scrape_attendees(driver,event_url,)
     obj = scrape_attendees(driver,event_id,event_type)
     attendees=obj['attendees']
 
@@ -46,4 +53,5 @@ if __name__ == "__main__":
             write_attendees(sheet,obj)
     else:
         print("No attendees scraped.")
+
 
